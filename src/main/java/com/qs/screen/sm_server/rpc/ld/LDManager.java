@@ -274,7 +274,7 @@ public class LDManager {
 	public void repPLC(Connection con, PreparedStatement pstmt, ResultSet rs, int from, LDPlcData plcData) throws Exception {
 		int setIndex = 1;
 		String sql = "insert into rmdevice_plc.rmdevice_plc(rmd_id,temp,elec,volt"
-				+ ") values(?,?,?,volt) returning plc_id";
+				+ ") values(?,?,?,?) returning plc_id";
 		pstmt = con.prepareStatement(sql);
 		pstmt.setInt(setIndex++, from);
 		pstmt.setFloat(setIndex++, plcData.temp);
@@ -285,11 +285,16 @@ public class LDManager {
 			throw new Exception("insert rmdevice_plc failed");
 		}
 		sql = "update rmdevice.rmdevice_state set temp=?,elec=?"
+				+ ",lcd_on=?,light_on=?,fan_on=?,lock=?"
 				+ ",update_date=now() where rmd_id=? returning rmd_id";
 		pstmt = con.prepareStatement(sql);
 		setIndex = 1;
 		pstmt.setFloat(setIndex++, plcData.temp);
 		pstmt.setFloat(setIndex++, plcData.elec);
+		pstmt.setInt(setIndex++, plcData.lcd_on);
+		pstmt.setInt(setIndex++, plcData.light_on);
+		pstmt.setInt(setIndex++, plcData.fan_on);
+		pstmt.setInt(setIndex++, plcData.lock);
 		pstmt.setInt(setIndex++, from);
 		rs = pstmt.executeQuery();
 	}
