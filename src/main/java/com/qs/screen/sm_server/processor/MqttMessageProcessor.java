@@ -55,8 +55,9 @@ public class MqttMessageProcessor implements Runnable {
 			result = RPCProcessMethod.generateResultMessage(-98, "服务器错误：空消息");
 			return;
 		}
+		String msgcontent = null;
 		try {
-			String msgcontent = new String(message.getPayload(), "UTF-8");
+			msgcontent = new String(message.getPayload(), "UTF-8");
 			String []topicSplit = message.getTopic().split("/");
 			String from = null;
 			switch(type) {
@@ -71,9 +72,14 @@ public class MqttMessageProcessor implements Runnable {
 			}
 			RPCProcessMethod processMethod = new RPCProcessMethod();
 			result = processMethod.processData(from, msgcontent);
-		} catch (UnsupportedEncodingException e1) {
-			logger.debug(CommonUtils.getExceptionInfo(e1));
-			result = RPCProcessMethod.generateResultMessage(-98, "服务器错误：请求数据编码错误");
+		} catch (Exception e1) {
+			if(e1 instanceof UnsupportedEncodingException) {
+				logger.warn("rpc request data:"+msgcontent, e1);
+				result = RPCProcessMethod.generateResultMessage(-99, "服务器错误：请求数据编码错误");
+			} else {
+				logger.error("rpc request data:"+msgcontent, e1);
+				result = RPCProcessMethod.generateResultMessage(-999, "服务器异常，请检查");
+			}
 		} finally {
 			pushResult(result);
 		}

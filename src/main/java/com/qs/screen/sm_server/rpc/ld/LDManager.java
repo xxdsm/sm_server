@@ -10,7 +10,7 @@ import java.sql.SQLException;
 import org.apache.log4j.Logger;
 
 import com.qs.screen.SMCommon.RPCMessage;
-import com.qs.screen.SMCommon.SMUser;
+import com.qs.screen.SMCommon.bean.SMUser;
 import com.qs.screen.SMCommon.constant.LDStateName;
 import com.qs.screen.SMCommon.constant.LDWarnLevel;
 import com.qs.screen.SMCommon.constant.LDWarnType;
@@ -194,7 +194,8 @@ public class LDManager {
 
 	public RPCMessage getDeviceInfo(Connection con, PreparedStatement pstmt, ResultSet rs, int deviceid) throws SQLException {
 		RPCMessage result = new RPCMessage();
-		String sql = "select rmd.rmd_id,mu.id user_id,mu.username,mu.password,rinfo.com_id,rinfo.liv_id,comm.areacode,rinfo.rmd_id infoid"
+		String sql = "select rmd.rmd_id,mu.id user_id,mu.username,mu.password,rinfo.com_id,rinfo.liv_id,town.town_id"
+				+ ",town.areacode,rinfo.rmd_id infoid"
 				+ " from rmdevice.rmdevice rmd"
 				+ " left join rmdevice.rmdevice_cfg rcfg on rcfg.rmd_id=rmd.rmd_id"
 //				+ " left join users.users us on us.user_id=rcfg.user_id"
@@ -202,6 +203,7 @@ public class LDManager {
 				+ " left join rmdevice.rmdevice_info rinfo on rinfo.rmd_id=rmd.rmd_id"
 				+ " left join livingarea.livingarea la on la.liv_id=rinfo.liv_id"
 				+ " left join community.community comm on comm.com_id=(case when la.com_id>0 then la.com_id else rinfo.com_id end)"
+				+ " left join town.town town on town.town_id=comm.town_id"
 				+ " where rmd.rmd_id=?";
 		pstmt = con.prepareStatement(sql);
 		pstmt.setInt(1, deviceid);
@@ -218,6 +220,7 @@ public class LDManager {
 		initInfo.user.password = rs.getString("password");
 		initInfo.rmd_id = rs.getInt("rmd_id");
 		initInfo.areacode = rs.getString("areacode");
+		initInfo.town_id = rs.getInt("town_id");
 		initInfo.com_id = rs.getInt("com_id");
 		initInfo.liv_id = rs.getInt("liv_id");
 		if(initInfo.user.id < 1) {
@@ -261,14 +264,10 @@ public class LDManager {
 		if(!rs.next()) {
 			throw new Exception("insert rmd_event failed");
 		}
-		if(status < 0) {
-			LDWarnInfo warnInfo = new LDWarnInfo();
-			warnInfo.rmd_id = from;
-			warnInfo.warn_type = LDWarnType.WARN_TYPE_SYS_STATE;
-			warnInfo.level = LDWarnLevel.WARN_LEVEL_SERIOUS;
-			warnInfo.msg = "设备离线";
-			repWarn(con, pstmt, rs, from, warnInfo);
-		}
+		LDStateSwitch stateSwitch = new LDStateSwitch();
+		stateSwitch.name = LDStateName.STATE_DEV_ONLINE;
+		stateSwitch.state = status<0 ? 0:1;
+		repDev_state(con, pstmt, rs, from, stateSwitch);
 	}
 
 	public void repPLC(Connection con, PreparedStatement pstmt, ResultSet rs, int from, LDPlcData plcData) throws Exception {
@@ -284,13 +283,14 @@ public class LDManager {
 		if(!rs.next()) {
 			throw new Exception("insert rmdevice_plc failed");
 		}
-		sql = "update rmdevice.rmdevice_state set temp=?,elec=?"
+		sql = "update rmdevice.rmdevice_state set temp=?,elec=?,volt=?"
 				+ ",lcd_on=?,light_on=?,fan_on=?,lock=?"
-				+ ",update_date=now() where rmd_id=? returning rmd_id";
+				+ ",update_date=now(),last_rep_time=now() where rmd_id=? returning rmd_id";
 		pstmt = con.prepareStatement(sql);
 		setIndex = 1;
 		pstmt.setFloat(setIndex++, plcData.temp);
 		pstmt.setFloat(setIndex++, plcData.elec);
+		pstmt.setFloat(setIndex++, plcData.volt);
 		pstmt.setInt(setIndex++, plcData.lcd_on);
 		pstmt.setInt(setIndex++, plcData.light_on);
 		pstmt.setInt(setIndex++, plcData.fan_on);
@@ -319,19 +319,24 @@ public class LDManager {
         LDWarnInfo warnInfo = new LDWarnInfo();
         warnInfo.rmd_id = from;
 		switch(stateSwitch.name) {
+		case LDStateName.STATE_DEV_ONLINE:
+	        warnInfo.warn_type = LDWarnType.WARN_TYPE_SYS_STATE;
+	        warnInfo.level = stateSwitch.state > 0 ? LDWarnLevel.WARN_LEVEL_NORMAL:LDWarnLevel.WARN_LEVEL_SERIOUS;
+	        warnInfo.msg = stateSwitch.state > 0 ? null:"设备离线";
+			break;
 		case LDStateName.STATE_HDMI:
-	        warnInfo.warn_type = LDWarnType.WARN_TYPE_SCREEN;
-	        warnInfo.level = stateSwitch.state > 0 ? LDWarnLevel.WARN_LEVEL_WARN:LDWarnLevel.WARN_LEVEL_NORMAL;
-	        warnInfo.msg = stateSwitch.state > 0 ? "显示器已连接":"显示器连接断开";
+			warnInfo.warn_type = LDWarnType.WARN_TYPE_SCREEN;
+			warnInfo.level = stateSwitch.state > 0 ? LDWarnLevel.WARN_LEVEL_NORMAL:LDWarnLevel.WARN_LEVEL_WARN;
+			warnInfo.msg = stateSwitch.state > 0 ? "显示器已连接":"显示器连接断开";
 			break;
 		case LDStateName.STATE_EST:
 	        warnInfo.warn_type = LDWarnType.WARN_TYPE_CARD_READER;
-	        warnInfo.level = stateSwitch.state > 0 ? LDWarnLevel.WARN_LEVEL_WARN:LDWarnLevel.WARN_LEVEL_NORMAL;
+	        warnInfo.level = stateSwitch.state > 0 ? LDWarnLevel.WARN_LEVEL_NORMAL:LDWarnLevel.WARN_LEVEL_WARN;
 	        warnInfo.msg = stateSwitch.state > 0 ? "读卡器已连接":"读卡器连接断开";
 			break;
 		case LDStateName.STATE_CTL:
 	        warnInfo.warn_type = LDWarnType.WARN_TYPE_SP_CTL;
-	        warnInfo.level = stateSwitch.state > 0 ? LDWarnLevel.WARN_LEVEL_SERIOUS:LDWarnLevel.WARN_LEVEL_NORMAL;
+	        warnInfo.level = stateSwitch.state > 0 ? LDWarnLevel.WARN_LEVEL_NORMAL:LDWarnLevel.WARN_LEVEL_SERIOUS;
 	        warnInfo.msg = stateSwitch.state > 0 ? "控制器已连接":"控制器连接断开";
 			break;
 		case LDStateName.STATE_LCD_ON:
