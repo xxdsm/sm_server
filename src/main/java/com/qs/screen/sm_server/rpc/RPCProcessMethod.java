@@ -6,8 +6,11 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import com.qs.screen.SMCommon.RPCMessage;
+import com.qs.screen.SMCommon.bean.RMDeviceReg;
+import com.qs.screen.sm_server.rpc.device.impl.RMDeviceImpl;
 import com.qs.screen.sm_server.rpc.user.impl.SMUserImpl;
 import com.yeild.common.JsonUtils.JsonUtils;
+import com.yeild.common.Utils.ConvertUtils;
 
 public class RPCProcessMethod extends AbstractDataProcessMethod {
 	private Logger logger = Logger.getLogger(RPCProcessMethod.class);
@@ -72,6 +75,16 @@ public class RPCProcessMethod extends AbstractDataProcessMethod {
 				return respResult = generateResultMessage(-902, "请求参数错误");
 			}
 			response = new SMUserImpl().getLivingareas(from, community);
+		}
+		else if(request.getMessage().equals("get_device_reg_list")) {
+			Map<String, String> params = JsonUtils.jsonToObj(request.getDataContent(), HashMap.class, String.class, Integer.class);
+			String identify = params.get("identify");
+			int operator = ConvertUtils.parseInt(params.get("operator"));
+			response = new RMDeviceImpl().getDeviceRegList(from, identify, operator);
+		}
+		else if(request.getMessage().equals("commit_device_reg")) {
+			RMDeviceReg device = JsonUtils.jsonToObj(request.getDataContent(), RMDeviceReg.class);
+			response = new RMDeviceImpl().regDevice(from, device);
 		}
 		else {
 			respResult = generateResultMessage(-902, "未定义的接口:"+request.getMessage());
