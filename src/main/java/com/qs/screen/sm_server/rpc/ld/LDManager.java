@@ -181,14 +181,25 @@ public class LDManager {
 		pstmt.setString(1, regInfo.serial_no);
 		pstmt.setString(2, regInfo.identify);
 		rs = pstmt.executeQuery();
-		if(rs.next()) {
-			result.setDataContent(String.valueOf(rs.getInt("rmd_id")));
-			result.setRpccode(1);
-			result.setMessage("设备注册成功");
-		} else {
+		int rmd_id = 0;
+		if(!rs.next()) {
+			result.setRpccode(-1);
+			result.setMessage("设备添加失败");
+			return result;
+		}
+		rmd_id = rs.getInt("rmd_id");
+		sql = "insert into rmdevice.rmdevice_reg(rmd_id) values(?) returning rmd_id";
+		pstmt = con.prepareStatement(sql);
+		pstmt.setInt(1, rmd_id);
+		rs = pstmt.executeQuery();
+		if(!rs.next()) {
 			result.setRpccode(-1);
 			result.setMessage("设备注册失败");
+			return result;
 		}
+		result.setDataContent(String.valueOf(rmd_id));
+		result.setRpccode(1);
+		result.setMessage("设备注册成功");
 		return result;
 	}
 
