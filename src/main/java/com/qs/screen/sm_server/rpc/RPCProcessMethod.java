@@ -6,17 +6,17 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import com.qs.screen.SMCommon.RPCMessage;
+import com.qs.screen.SMCommon.bean.OpsRMDeviceListFilter;
 import com.qs.screen.SMCommon.bean.RMDeviceReg;
 import com.qs.screen.sm_server.rpc.device.impl.RMDeviceImpl;
 import com.qs.screen.sm_server.rpc.user.impl.SMUserImpl;
 import com.yeild.common.JsonUtils.JsonUtils;
-import com.yeild.common.Utils.ConvertUtils;
 
 public class RPCProcessMethod extends AbstractDataProcessMethod {
 	private Logger logger = Logger.getLogger(RPCProcessMethod.class);
 	
 	public static String generateResultMessage(int code, String message) {
-		RPCMessage resultMsg = new RPCMessage();
+		RPCMessage<?> resultMsg = new RPCMessage<>();
 		resultMsg.setRpccode(code);
 		resultMsg.setMessage(message);
 		return JsonUtils.objToJson(resultMsg);
@@ -25,9 +25,10 @@ public class RPCProcessMethod extends AbstractDataProcessMethod {
 	@Override
 	public String processData(String from, String data) {
 		String respResult = null;
-		RPCMessage response = null;
-		RPCMessage request = JsonUtils.jsonToObj(data, RPCMessage.class);
-		if(request == null) {
+		RPCMessage<?> response = null;
+		RPCMessage<?> request = JsonUtils.jsonToObj(data, RPCMessage.class);
+		if(request == null || request.getMessage().length() < 1) {
+			logger.warn("RPCProcessMethod handle invalid request: from->"+from+" data:"+data);
 			respResult = generateResultMessage(-901, "请求数据格式错误");
 		}
 		else if(request.getMessage().equals("init")) {
@@ -37,7 +38,7 @@ public class RPCProcessMethod extends AbstractDataProcessMethod {
 			response = new SMUserImpl().getProvinces(from);
 		}
 		else if(request.getMessage().equals("get_cities")) {
-			Map<String, Integer> params = JsonUtils.jsonToObj(request.getDataContent(), HashMap.class, String.class, Integer.class);
+			Map<String, Integer> params = JsonUtils.castTo(request.getDataContent(), HashMap.class, String.class, Integer.class);
 			int province = 0;
 			if(params == null || (province = params.get("province")) < 1) {
 				return respResult = generateResultMessage(-902, "请求参数错误");
@@ -45,7 +46,7 @@ public class RPCProcessMethod extends AbstractDataProcessMethod {
 			response = new SMUserImpl().getCities(from, province);
 		}
 		else if(request.getMessage().equals("get_counties")) {
-			Map<String, Integer> params = JsonUtils.jsonToObj(request.getDataContent(), HashMap.class, String.class, Integer.class);
+			Map<String, Integer> params = JsonUtils.castTo(request.getDataContent(), HashMap.class, String.class, Integer.class);
 			int city = 0;
 			if(params == null || (city = params.get("city")) < 1) {
 				return respResult = generateResultMessage(-902, "请求参数错误");
@@ -53,7 +54,7 @@ public class RPCProcessMethod extends AbstractDataProcessMethod {
 			response = new SMUserImpl().getCounties(from, city);
 		}
 		else if(request.getMessage().equals("get_towns")) {
-			Map<String, Integer> params = JsonUtils.jsonToObj(request.getDataContent(), HashMap.class, String.class, Integer.class);
+			Map<String, Integer> params = JsonUtils.castTo(request.getDataContent(), HashMap.class, String.class, Integer.class);
 			int county = 0;
 			if(params == null || (county = params.get("county")) < 1) {
 				return respResult = generateResultMessage(-902, "请求参数错误");
@@ -61,7 +62,7 @@ public class RPCProcessMethod extends AbstractDataProcessMethod {
 			response = new SMUserImpl().getTowns(from, county);
 		}
 		else if(request.getMessage().equals("get_communities")) {
-			Map<String, Integer> params = JsonUtils.jsonToObj(request.getDataContent(), HashMap.class, String.class, Integer.class);
+			Map<String, Integer> params = JsonUtils.castTo(request.getDataContent(), HashMap.class, String.class, Integer.class);
 			int town = 0;
 			if(params == null || (town = params.get("town")) < 1) {
 				return respResult = generateResultMessage(-902, "请求参数错误");
@@ -69,7 +70,7 @@ public class RPCProcessMethod extends AbstractDataProcessMethod {
 			response = new SMUserImpl().getCommunities(from, town);
 		}
 		else if(request.getMessage().equals("get_livingareas")) {
-			Map<String, Integer> params = JsonUtils.jsonToObj(request.getDataContent(), HashMap.class, String.class, Integer.class);
+			Map<String, Integer> params = JsonUtils.castTo(request.getDataContent(), HashMap.class, String.class, Integer.class);
 			int community = 0;
 			if(params == null || (community = params.get("community")) < 1) {
 				return respResult = generateResultMessage(-902, "请求参数错误");
@@ -77,13 +78,11 @@ public class RPCProcessMethod extends AbstractDataProcessMethod {
 			response = new SMUserImpl().getLivingareas(from, community);
 		}
 		else if(request.getMessage().equals("get_device_reg_list")) {
-			Map<String, String> params = JsonUtils.jsonToObj(request.getDataContent(), HashMap.class, String.class, Integer.class);
-			String identify = params.get("identify");
-			int operator = ConvertUtils.parseInt(params.get("operator"));
-			response = new RMDeviceImpl().getDeviceRegList(from, identify, operator);
+			OpsRMDeviceListFilter filter = JsonUtils.castTo(request.getDataContent(), OpsRMDeviceListFilter.class);
+			response = new RMDeviceImpl().getDeviceRegList(from, filter);
 		}
 		else if(request.getMessage().equals("commit_device_reg")) {
-			RMDeviceReg device = JsonUtils.jsonToObj(request.getDataContent(), RMDeviceReg.class);
+			RMDeviceReg device = JsonUtils.castTo(request.getDataContent(), RMDeviceReg.class);
 			response = new RMDeviceImpl().regDevice(from, device);
 		}
 		else {

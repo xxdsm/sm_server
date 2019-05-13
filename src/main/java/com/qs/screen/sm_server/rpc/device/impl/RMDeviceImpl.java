@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import org.apache.log4j.Logger;
 
 import com.qs.screen.SMCommon.RPCMessage;
+import com.qs.screen.SMCommon.bean.OpsRMDeviceListFilter;
 import com.qs.screen.SMCommon.bean.RMDeviceListFilter;
 import com.qs.screen.SMCommon.bean.RMDeviceReg;
 import com.qs.screen.SMCommon.bean.RMDeviceRegList;
@@ -18,8 +19,8 @@ public class RMDeviceImpl implements IRMDevice {
 	private Logger logger = Logger.getLogger(getClass());
 	
 	@Override
-	public RPCMessage getDeviceList(String from, RMDeviceListFilter filter) {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<?> getDeviceList(String from, RMDeviceListFilter filter) {
+		RPCMessage<?> result = new RPCMessage<>();
 		Connection con = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -37,16 +38,16 @@ public class RMDeviceImpl implements IRMDevice {
 	}
 	
 	@Override
-	public RPCMessage getDeviceRegList(String from, String identify, int operator) {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<?> getDeviceRegList(String from, OpsRMDeviceListFilter filter) {
+		RPCMessage<?> result = new RPCMessage<>();
 		Connection con = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
 		try {
 			con = DbConnectionManager.getConnection();
-			result = getDeviceRegList(con, pstmt, rs, from, identify, operator);
+			result = getDeviceRegList(con, pstmt, rs, from, filter);
 		} catch (Exception e) {
-			logger.error("getDeviceRegList:"+from+" identify->"+identify+" operator->"+operator, e);
+			logger.error("getDeviceRegList:"+from+" identify->"+filter.identify+" operator->"+filter.operator_reg, e);
 			result.setRpccode(-99);
 			result.setMessage("获取数据异常");
 		} finally {
@@ -56,8 +57,8 @@ public class RMDeviceImpl implements IRMDevice {
 	}
 	
 	@Override
-	public RPCMessage getDeviceDetail(String from, int rmd_id) {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<?> getDeviceDetail(String from, int rmd_id) {
+		RPCMessage<?> result = new RPCMessage<>();
 		Connection con = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -75,8 +76,8 @@ public class RMDeviceImpl implements IRMDevice {
 	}
 	
 	@Override
-	public RPCMessage regDevice(String from, RMDeviceReg device) {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<?> regDevice(String from, RMDeviceReg device) {
+		RPCMessage<?> result = new RPCMessage<>();
 		Connection con = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -98,8 +99,8 @@ public class RMDeviceImpl implements IRMDevice {
 		return result;
 	}
 	
-	public RPCMessage getDeviceList(Connection con, PreparedStatement pstmt, ResultSet rs, String from, RMDeviceListFilter filter) throws Exception {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<?> getDeviceList(Connection con, PreparedStatement pstmt, ResultSet rs, String from, RMDeviceListFilter filter) throws Exception {
+		RPCMessage<?> result = new RPCMessage<>();
 		String sql = "select  rmd.rmd_id, rmd.create_date"
 				+ ",rmdi.gpsx,rmdi.gpsy,rmdi.com_id,rmdi.liv_id,rmdi.name rmd_name,rmds.status,coun.areacode"
 				+ ",liv.name liv_name,comm.name comm_name,tow.name town_name,coun.areaname county,city.areaname city,prov.areaname prov_name"
@@ -116,45 +117,56 @@ public class RMDeviceImpl implements IRMDevice {
 		return result;
 	}
 	
-	public RPCMessage getDeviceRegList(Connection con, PreparedStatement pstmt, ResultSet rs, String from, String identify, int operator) throws Exception {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<RMDeviceRegList> getDeviceRegList(Connection con, PreparedStatement pstmt, ResultSet rs, String from, OpsRMDeviceListFilter filter) throws Exception {
+		if(filter.limit < 1) filter.limit = 10;
+		RPCMessage<RMDeviceRegList> result = new RPCMessage<>();
 		StringBuilder condition = new StringBuilder(" where");
-		if(operator > 0) {
+		if(filter.operator_reg > 0) {
 			// 已填写注册信息
-			condition.append(" rmdr.operator_reg=").append(operator);
+			condition.append(" rmdr.operator_reg=").append(filter.operator_reg);
 		} else {
 			// 未填写注册信息
 			condition.append(" rmdr.operator_reg < 1 or rmdr.operator_reg is null ");
 		}
-		if(identify != null && identify.length() > 0) {
-			condition.append(" and rmd.identify like '%").append(identify.replaceAll(" ", "%")).append("%'");
+		if(filter.getIdentify().length() > 0) {
+			condition.append(" and rmd.identify like '%").append(filter.identify.replaceAll(" ", "%")).append("%'");
 		}
-		String sql = "select rmd.rmd_id, rmd.create_date,rmdr.gpsx,rmdr.gpsy,operator_reg,operator_cfg,rmd.identify"
+		String sql = "select rmd.rmd_id, rmd.create_date,rmdr.gpsx,rmdr.gpsy,rmd.identify"
+				+ ",operator_reg, us_reg.surname reg_name,operator_cfg, us_cfg.surname cfg_name"
 				+ " from rmdevice.rmdevice_reg rmdr"
-				+ " left join rmdevice.rmdevice rmd on rmd.rmd_id = rmdr.rmd_id"+condition.toString()
-				+ " order by rmdr.rmd_id desc";
+				+ " left join rmdevice.rmdevice rmd on rmd.rmd_id = rmdr.rmd_id"
+				+ " left join users.users us_reg on us_reg.user_id=rmdr.operator_reg"
+				+ " left join users.users us_cfg on us_cfg.user_id=rmdr.operator_cfg"
+				+ condition.toString()
+				+ " order by rmdr.rmd_id desc limit ? offset ?";
 		pstmt = con.prepareStatement(sql);
+		pstmt.setInt(1, filter.limit);
+		pstmt.setInt(2, filter.offset);
 		rs = pstmt.executeQuery();
 		RMDeviceRegList deviceList = new RMDeviceRegList();
 		while(rs.next()) {
 			RMDeviceReg device = new RMDeviceReg();
 			device.rmd_id = rs.getInt("rmd_id");
-			device.gpsx = rs.getFloat("gpsx");
-			device.gpsy = rs.getFloat("gpsy");
+			device.gpsx = rs.getDouble("gpsx");
+			device.gpsy = rs.getDouble("gpsy");
 			device.operator_reg = rs.getInt("operator_reg");
 			device.operator_cfg = rs.getInt("operator_cfg");
+			device.operator_reg_name = rs.getString("reg_name");
+			device.operator_cfg_name = rs.getString("cfg_name");
 			device.identify = rs.getString("identify");
 			device.create_date = rs.getString("create_date");
 			deviceList.addDevice(device);
 		}
+		deviceList.limit = filter.limit;
+		deviceList.offset = filter.offset;
 		result.setRpccode(1);
 		result.setMessage("获取数据成功");
-		result.setDataContent(JsonUtils.objToJson(deviceList));
+		result.setDataContent(deviceList);
 		return result;
 	}
 
-	public RPCMessage getDeviceDetail(Connection con, PreparedStatement pstmt, ResultSet rs, String from, int rmd_id) throws Exception {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<?> getDeviceDetail(Connection con, PreparedStatement pstmt, ResultSet rs, String from, int rmd_id) throws Exception {
+		RPCMessage<?> result = new RPCMessage<>();
 		String sql = "select  rmd.rmd_id, rmd.create_date"
 				+ ",rmdi.gpsx,rmdi.gpsy,rmdi.com_id,rmdi.liv_id,rmdi.name rmd_name,rmds.status,coun.areacode"
 				+ ",liv.name liv_name,comm.name comm_name,tow.name town_name,coun.areaname county,city.areaname city,prov.areaname prov_name"
@@ -171,13 +183,31 @@ public class RMDeviceImpl implements IRMDevice {
 		return result;
 	}
 
-	public RPCMessage regDevice(Connection con, PreparedStatement pstmt, ResultSet rs, String from, RMDeviceReg device) throws Exception {
-		RPCMessage result = new RPCMessage();
-		String sql = "update rmdevice.rmdevice_reg set gpxs=?,gpsy=?,operator_reg=?,update_date=now()"
+	public RPCMessage<?> regDevice(Connection con, PreparedStatement pstmt, ResultSet rs, String from, RMDeviceReg device) throws Exception {
+		RPCMessage<?> result = new RPCMessage<>();
+		String sql;
+		if(device.force_override == 0) {
+			sql = "select operator_reg,operator_cfg, us_reg.surname reg_name"
+					+ " from rmdevice.rmdevice_reg rmdr"
+					+ " left join users.users us_reg on us_reg.user_id=rmdr.operator_reg"
+					+ " left join users.users us_cfg on us_cfg.user_id=rmdr.operator_cfg"
+					+ " where rmdr.rmd_id=?";
+			pstmt = con.prepareStatement(sql);
+			pstmt.setInt(1, device.rmd_id);
+			rs = pstmt.executeQuery();
+			if(rs.next()) {
+				if(device.operator_reg != rs.getInt("operator_reg")) {
+					result.setRpccode(10);
+					result.setMessage("该设备已由 "+rs.getString("reg_name")+ " 完成配置");
+					return result;
+				}
+			}
+		}
+		sql = "update rmdevice.rmdevice_reg set gpsx=?,gpsy=?,operator_reg=?,update_date=now()"
 				+ " where rmd_id=? returning operator_reg";
 		pstmt = con.prepareStatement(sql);
-		pstmt.setFloat(1, device.gpsx);
-		pstmt.setFloat(2, device.gpsy);
+		pstmt.setDouble(1, device.gpsx);
+		pstmt.setDouble(2, device.gpsy);
 		pstmt.setInt(3, device.operator_reg);
 		pstmt.setInt(4, device.rmd_id);
 		rs = pstmt.executeQuery();

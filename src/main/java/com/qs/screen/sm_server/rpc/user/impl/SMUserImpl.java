@@ -1,9 +1,9 @@
 package com.qs.screen.sm_server.rpc.user.impl;
 
+import java.sql.Array;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 
 import org.apache.log4j.Logger;
 
@@ -17,32 +17,29 @@ import com.qs.screen.SMCommon.bean.Province;
 import com.qs.screen.SMCommon.bean.SMUser;
 import com.qs.screen.SMCommon.bean.SMUserConfig;
 import com.qs.screen.SMCommon.bean.Town;
-import com.qs.screen.SMCommon.constant.SMUserType;
 import com.qs.screen.sm_server.rpc.user.ISMUser;
-import com.yeild.common.JsonUtils.JsonUtils;
 import com.yeild.common.Utils.CommonUtils;
+import com.yeild.common.Utils.ConvertUtils;
 import com.yeild.common.dbtools.database.DbConnectionManager;
 
 public class SMUserImpl implements ISMUser {
 	private Logger logger = Logger.getLogger(getClass());
 
 	@Override
-	public RPCMessage getUserConfig(String from) {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<?> getUserConfig(String from) {
+		RPCMessage<?> result = new RPCMessage<>();
 		Connection con = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
 		try {
 			con = DbConnectionManager.getConnection();
-			SMUserConfig userConfig = getUserConfig(con, pstmt, rs, from);
-			if(userConfig == null) {
+			result = getUserConfig(con, pstmt, rs, from);
+			if(result == null) {
+				result = new RPCMessage<>();
 				result.setRpccode(-1);
 				result.setMessage("获取用户数据失败");
 				return result;
 			}
-			result.setRpccode(1);
-			result.setMessage("获取用户数据成功");
-			result.setDataContent(JsonUtils.objToJson(userConfig));
 		} catch (Exception e) {
 			logger.error("getUserConfig error:"+"\ndata->"+from+"\nerror info->"+CommonUtils.getExceptionInfo(e));
 			result.setRpccode(-999);
@@ -54,8 +51,8 @@ public class SMUserImpl implements ISMUser {
 	}
 
 	@Override
-	public RPCMessage getProvinces(String from) {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<AddressList> getProvinces(String from) {
+		RPCMessage<AddressList> result = new RPCMessage<>();
 		Connection con = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -69,7 +66,7 @@ public class SMUserImpl implements ISMUser {
 			}
 			result.setRpccode(1);
 			result.setMessage("获取区划数据成功");
-			result.setDataContent(JsonUtils.objToJson(data));
+			result.setDataContent(data);
 		} catch (Exception e) {
 			logger.error("getProvinces error:"+"\ndata->"+from+"\nerror info->"+CommonUtils.getExceptionInfo(e));
 			result.setRpccode(-999);
@@ -81,8 +78,8 @@ public class SMUserImpl implements ISMUser {
 	}
 
 	@Override
-	public RPCMessage getCities(String from, int province) {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<Province> getCities(String from, int province) {
+		RPCMessage<Province> result = new RPCMessage<>();
 		Connection con = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -96,7 +93,7 @@ public class SMUserImpl implements ISMUser {
 			}
 			result.setRpccode(1);
 			result.setMessage("获取区划数据成功");
-			result.setDataContent(JsonUtils.objToJson(data));
+			result.setDataContent(data);
 		} catch (Exception e) {
 			logger.error("getCities error:"+"\ndata->"+from+" code->"+province+"\nerror info->"+CommonUtils.getExceptionInfo(e));
 			result.setRpccode(-999);
@@ -108,8 +105,8 @@ public class SMUserImpl implements ISMUser {
 	}
 
 	@Override
-	public RPCMessage getCounties(String from, int city) {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<City> getCounties(String from, int city) {
+		RPCMessage<City> result = new RPCMessage<>();
 		Connection con = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -123,7 +120,7 @@ public class SMUserImpl implements ISMUser {
 			}
 			result.setRpccode(1);
 			result.setMessage("获取区划数据成功");
-			result.setDataContent(JsonUtils.objToJson(data));
+			result.setDataContent(data);
 		} catch (Exception e) {
 			logger.error("getCounties error:"+"\ndata->"+from+" code->"+city+"\nerror info->"+CommonUtils.getExceptionInfo(e));
 			result.setRpccode(-999);
@@ -135,8 +132,8 @@ public class SMUserImpl implements ISMUser {
 	}
 
 	@Override
-	public RPCMessage getTowns(String from, int county) {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<County> getTowns(String from, int county) {
+		RPCMessage<County> result = new RPCMessage<>();
 		Connection con = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -150,7 +147,7 @@ public class SMUserImpl implements ISMUser {
 			}
 			result.setRpccode(1);
 			result.setMessage("获取区划数据成功");
-			result.setDataContent(JsonUtils.objToJson(data));
+			result.setDataContent(data);
 		} catch (Exception e) {
 			logger.error("getTowns error:"+"\ndata->"+from+" code->"+county+"\nerror info->"+CommonUtils.getExceptionInfo(e));
 			result.setRpccode(-999);
@@ -162,8 +159,8 @@ public class SMUserImpl implements ISMUser {
 	}
 
 	@Override
-	public RPCMessage getCommunities(String from, int town) {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<Town> getCommunities(String from, int town) {
+		RPCMessage<Town> result = new RPCMessage<>();
 		Connection con = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -177,7 +174,7 @@ public class SMUserImpl implements ISMUser {
 			}
 			result.setRpccode(1);
 			result.setMessage("获取区划数据成功");
-			result.setDataContent(JsonUtils.objToJson(data));
+			result.setDataContent(data);
 		} catch (Exception e) {
 			logger.error("getCommunities error:"+"\ndata->"+from+" code->"+town+"\nerror info->"+CommonUtils.getExceptionInfo(e));
 			result.setRpccode(-999);
@@ -189,8 +186,8 @@ public class SMUserImpl implements ISMUser {
 	}
 
 	@Override
-	public RPCMessage getLivingareas(String from, int community) {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<Community> getLivingareas(String from, int community) {
+		RPCMessage<Community> result = new RPCMessage<>();
 		Connection con = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -204,7 +201,7 @@ public class SMUserImpl implements ISMUser {
 			}
 			result.setRpccode(1);
 			result.setMessage("获取区划数据成功");
-			result.setDataContent(JsonUtils.objToJson(data));
+			result.setDataContent(data);
 		} catch (Exception e) {
 			logger.error("getLivingareas error:"+"\ndata->"+from+" code->"+community+"\nerror info->"+CommonUtils.getExceptionInfo(e));
 			result.setRpccode(-999);
@@ -215,28 +212,134 @@ public class SMUserImpl implements ISMUser {
 		return result;
 	}
 
-	public SMUserConfig getUserConfig(Connection con, PreparedStatement pstmt, ResultSet rs, String from) throws SQLException {
+	public RPCMessage<SMUserConfig> getUserConfig(Connection con, PreparedStatement pstmt, ResultSet rs, String from) throws Exception {
+		RPCMessage<SMUserConfig> result = new RPCMessage<>();
+		String sql = "select mu.id userid,mu.username,us.surname,us.type,us.phone,us.sex"
+				+ ",us.areacode,us.town_id,us.com_id,us.livingarea_ids"
+				+ " from users.users us"
+				+ " left join mqtt_user mu on us.user_id=mu.id"
+				+ " where us.username=?";
+		pstmt = con.prepareStatement(sql);
+		pstmt.setString(1, from);
+		rs = pstmt.executeQuery();
+		if(!rs.next()) {
+			result.setRpccode(-10);
+			result.setMessage("用户不存在");
+			return result;
+		}
 		SMUserConfig config = new SMUserConfig();
-		config.surname = "测试用户";
-		config.type = SMUserType.Type_Manager;
-		config.phone = "13125737883";
+		config.surname = rs.getString("surname");
+		config.type = rs.getInt("type");
+		config.phone = rs.getString("phone");
         config.user = new SMUser();
-        config.user.id = 20;
-        config.user.username = "yp142";
+        config.user.id = rs.getInt("userid");
+        config.user.username = rs.getString("username");
+//        String areacode = rs.getString("areacode");
+//        int town_id = rs.getInt("town_id");
+//        int com_id = rs.getInt("com_id");
+//        Array livingarea_ids = rs.getArray("livingarea_ids");
+        
+        sql = "with areas as (select"
+        		+ " substr(areacode::varchar, 1, 6)::int county"
+        		+ ", substr(areacode::varchar, 1, 4)::int*100 city"
+        		+ ", substr(areacode::varchar, 1, 2)::int*10000 province"
+        		+ ",town_id,com_id,livingarea_ids"
+        		+ " from users.users where user_id=?"
+        		+ ")"
+        		+ "select substr(pro.areacode::varchar, 1, 2)::int pro,pro.areaname pro_name"
+        		+ ",substr(city.areacode::varchar, 3, 2)::int city,city.areaname city_name"
+        		+ ",substr(coun.areacode::varchar, 5, 2)::int coun,coun.areaname coun_name"
+        		+ ",tow.town_id, tow.name tow_name,comm.com_id, comm.name com_name"
+        		+ ",liv.liv_id, liv.name liv_name"
+        		+ " from areas ar"
+        		+ " left join livingarea.livingarea liv on liv.liv_id = any (ar.livingarea_ids)"
+        		+ " left join community.community comm on comm.com_id=liv.com_id or (liv.com_id is null and comm.com_id=ar.com_id)"
+        		+ " left join town.town tow on tow.town_id=comm.town_id or (comm.com_id is null and tow.town_id=ar.town_id)"
+        		+ " left join dictionary.area coun on coun.areacode=substr(tow.areacode::varchar, 1, 6)::int or (tow.areacode is null and coun.areacode=ar.county)"
+        		+ " left join dictionary.area city on city.areacode=substr(coun.areacode::varchar, 1, 4)::int*100 or (coun.areacode is null and city.areacode=ar.city)"
+        		+ " left join dictionary.area pro on pro.areacode=substr(city.areacode::varchar, 1, 2)::int*10000 or (city.areacode is null and pro.areacode=ar.province)";
+        pstmt = con.prepareStatement(sql);
+        pstmt.setInt(1, config.user.id);
+//        pstmt.setString(1, areacode);
+//        pstmt.setString(2, areacode);
+//        pstmt.setString(3, areacode);
+//        pstmt.setInt(4, town_id);
+//        pstmt.setInt(5, com_id);
+//        pstmt.setArray(6, livingarea_ids);
+        rs = pstmt.executeQuery();
         config.address = new AddressList();
-        Province province = new Province();
-        province.areacode = 51;
-        province.areaname = "四川省";
-        City city = new City();
-        city.areacode = 5101;
-        city.areaname = "成都市";
-        province.addCity(city);
-        city = new City();
-        city.areacode = 5134;
-        city.areaname = "凉山州";
-        province.addCity(city);
-        config.address.addProvince(province);
-        return config;
+		while(rs.next()) {
+			int pro = rs.getInt("pro");
+			if(pro < 1) {
+				continue;
+			}
+			Province province = config.address.getSubByCode(pro);
+			if(province == null) {
+				province = new Province();
+				province.areacode = pro;
+				province.areaname = rs.getString("pro_name");
+				config.address.addProvince(province);
+			}
+			int cit = rs.getInt("city");
+			if(cit < 1) {
+				continue;
+			}
+			City city = province.getSubByCode(cit);
+			if(city == null) {
+				city = new City();
+				city.areacode = cit;
+				city.areaname = rs.getString("city_name");
+				province.addCity(city);
+			}
+			int coun = rs.getInt("coun");
+			if(coun < 1) {
+				continue;
+			}
+			County county = city.getSubByCode(coun);
+			if(county == null) {
+				county = new County();
+				county.areacode = coun;
+				county.areaname = rs.getString("coun_name");
+				city.addCounty(county);
+			}
+			int townid = rs.getInt("town_id");
+			if(townid < 1) {
+				continue;
+			}
+			Town town = county.getSubByCode(townid);
+			if(town == null) {
+				town = new Town();
+				town.town_id = townid;
+				town.name = rs.getString("tow_name");
+				county.addTown(town);
+			}
+			int comid = rs.getInt("com_id");
+			if(comid < 1) {
+				continue;
+			}
+			Community community = town.getSubByCode(comid);
+			if(community == null) {
+				community = new Community();
+				community.com_id = comid;
+				community.name = rs.getString("com_name");
+				town.addCommunity(community);
+			}
+			int livid = rs.getInt("liv_id");
+			if(livid < 1) {
+				continue;
+			}
+			Livingarea livingarea = community.getSubByCode(livid);
+			if(livingarea == null) {
+				livingarea = new Livingarea();
+				livingarea.liv_id = livid;
+				livingarea.name = rs.getString("liv_name");
+				community.addLivingarea(livingarea);
+			}
+		}
+		result.setRpccode(1);
+		result.setMessage("获取数据成功");
+        result.setDataContent(config);
+        return result;
 	}
 
 	public AddressList getProvinces(Connection con, PreparedStatement pstmt, ResultSet rs, String from) {

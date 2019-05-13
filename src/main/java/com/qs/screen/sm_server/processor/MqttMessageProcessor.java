@@ -7,8 +7,6 @@ import org.apache.log4j.Logger;
 import com.qs.screen.sm_server.Application;
 import com.qs.screen.sm_server.mqtt.ReceivedMessageType;
 import com.qs.screen.sm_server.rpc.RPCProcessMethod;
-import com.qs.screen.sm_server.rpc.ld.LDManager;
-import com.yeild.common.Utils.CommonUtils;
 import com.yeild.mqtt.PushMqttMessage;
 
 public class MqttMessageProcessor implements Runnable {
@@ -25,7 +23,7 @@ public class MqttMessageProcessor implements Runnable {
 	}
 	
 	public void pushResult(String result) {
-		if(result == null) return;
+		if(result == null || result.trim().length() < 1) return;
 		PushMqttMessage resultMessage = new PushMqttMessage(message.getTopic().replaceFirst(Application.mqttServerTask.getMqttConfig().getRpcRequestName()
 				, Application.mqttServerTask.getMqttConfig().getRpcResponseName()), message);
 		resultMessage.setPayload(result);
@@ -33,7 +31,7 @@ public class MqttMessageProcessor implements Runnable {
 		int retry = 0;
 		boolean responsed = false;
 		while (true) {
-			if(Application.mqttServerTask.pushMessageAsync(resultMessage)){
+			if(Application.mqttServerTask.pushMessage(resultMessage)){
 				responsed = true;
 				break;
 			}
@@ -45,7 +43,7 @@ public class MqttMessageProcessor implements Runnable {
 				break;
 			}
 		}
-		logger.info(message.getTopic()+" processed"+(responsed?"":" but response failed")+":\n"+result);
+		logger.info(message.getTopic()+" processed"+(responsed?"":" but push response failed")+":\n"+result);
 	}
 
 	@Override
@@ -63,7 +61,7 @@ public class MqttMessageProcessor implements Runnable {
 			switch(type) {
 			case Type_LD_REP:
 			case Type_LD_INIT:
-				result = LDManager.handle(message.getTopic(), msgcontent);
+//				result = LDManager.handle(message.getTopic(), msgcontent);
 				return;
 			case Type_RPC:
 				from = topicSplit[topicSplit.length-2];

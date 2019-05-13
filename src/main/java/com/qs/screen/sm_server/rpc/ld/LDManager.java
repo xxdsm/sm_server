@@ -70,7 +70,7 @@ public class LDManager {
 	}
 	
 	public String init(String req) {
-		RPCMessage result = new RPCMessage();
+		RPCMessage<?> result = new RPCMessage<>();
 		Connection con = null;
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
@@ -162,19 +162,19 @@ public class LDManager {
 	
 //  TODO 分隔线
 	
-	public RPCMessage deviceReg(Connection con, PreparedStatement pstmt, ResultSet rs, LDRegInfo regInfo) throws SQLException {
+	public RPCMessage<?> deviceReg(Connection con, PreparedStatement pstmt, ResultSet rs, LDRegInfo regInfo) throws SQLException {
 		String sql = "select rmd_id from rmdevice.rmdevice where identify=?";
 		pstmt = con.prepareStatement(sql);
 		pstmt.setString(1, regInfo.identify);
 		rs = pstmt.executeQuery();
 		if(rs.next()) {
-			RPCMessage result = getDeviceInfo(con, pstmt, rs, rs.getInt("rmd_id"));
+			RPCMessage<?> result = getDeviceInfo(con, pstmt, rs, rs.getInt("rmd_id"));
 			if(result.getRpccode() > 0) {
 				result.setRpccode(2);
 			}
 			return result;
 		}
-		RPCMessage result = new RPCMessage();
+		RPCMessage<Integer> result = new RPCMessage<>();
 		sql = "insert into rmdevice.rmdevice(serial_no,identify"
 				+ ") values(?,?) returning rmd_id";
 		pstmt = con.prepareStatement(sql);
@@ -197,14 +197,14 @@ public class LDManager {
 			result.setMessage("设备注册失败");
 			return result;
 		}
-		result.setDataContent(String.valueOf(rmd_id));
+		result.setDataContent(rmd_id);
 		result.setRpccode(1);
 		result.setMessage("设备注册成功");
 		return result;
 	}
 
-	public RPCMessage getDeviceInfo(Connection con, PreparedStatement pstmt, ResultSet rs, int deviceid) throws SQLException {
-		RPCMessage result = new RPCMessage();
+	public RPCMessage<LDInitInfo> getDeviceInfo(Connection con, PreparedStatement pstmt, ResultSet rs, int deviceid) throws SQLException {
+		RPCMessage<LDInitInfo> result = new RPCMessage<>();
 		String sql = "select rmd.rmd_id,mu.id user_id,mu.username,mu.password,rinfo.com_id,rinfo.liv_id,town.town_id"
 				+ ",town.areacode,rinfo.rmd_id infoid"
 				+ " from rmdevice.rmdevice rmd"
@@ -251,7 +251,7 @@ public class LDManager {
 		}
 		result.setRpccode(1);
 		result.setMessage("获取设备数据成功");
-		result.setDataContent(JsonUtils.objToJson(initInfo));
+		result.setDataContent(initInfo);
 		return result;
 	}
 
