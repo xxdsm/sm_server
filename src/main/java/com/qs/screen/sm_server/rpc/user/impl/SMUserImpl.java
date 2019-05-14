@@ -1,6 +1,5 @@
 package com.qs.screen.sm_server.rpc.user.impl;
 
-import java.sql.Array;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -19,7 +18,6 @@ import com.qs.screen.SMCommon.bean.SMUserConfig;
 import com.qs.screen.SMCommon.bean.Town;
 import com.qs.screen.sm_server.rpc.user.ISMUser;
 import com.yeild.common.Utils.CommonUtils;
-import com.yeild.common.Utils.ConvertUtils;
 import com.yeild.common.dbtools.database.DbConnectionManager;
 
 public class SMUserImpl implements ISMUser {
