@@ -196,7 +196,8 @@ public class RMDeviceImpl implements IRMDevice {
 			pstmt.setInt(1, device.rmd_id);
 			rs = pstmt.executeQuery();
 			if(rs.next()) {
-				if(device.operator_reg != rs.getInt("operator_reg")) {
+				int operator_reg = rs.getInt("operator_reg");
+				if(operator_reg > 0 && device.operator_reg != operator_reg) {
 					result.setRpccode(10);
 					result.setMessage("该设备已由 "+rs.getString("reg_name")+ " 完成配置");
 					return result;
