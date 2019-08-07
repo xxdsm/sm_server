@@ -62,7 +62,7 @@ public class MqttMessageProcessor implements Runnable {
 			switch(type) {
 			case Type_LD_REP:
 			case Type_LD_INIT:
-//				result = LDManager.handle(message.getTopic(), msgcontent);
+				result = LDManager.handle(message.getTopic(), msgcontent);
 				return;
 			case Type_RPC:
 				from = topicSplit[topicSplit.length-2];
